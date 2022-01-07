@@ -1,25 +1,77 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
+title: "Reproducible Research: Peer Assessment"
+author: "MV"
+date: "1/1/2022"
 output: 
-  html_document:
-    keep_md: true
+    html_document:
+        keep_md: true
 ---
 
-
-## Loading and preprocessing the data
-
-
-
-## What is mean total number of steps taken per day?
-
+Loading and preprocessing the data
+```{r echo=TRUE}
+ActivityData <- read.csv("activity.csv")
+summary(ActivityData)
+```
 
 
-## What is the average daily activity pattern?
+Mean and median total number of steps taken per day
+```{r echo=TRUE}
+StepsPerDay <- aggregate(steps~date, ActivityData, sum, na.rm=TRUE)
+hist(StepsPerDay$steps)
+meanStepsPerDay <- mean(StepsPerDay$steps)
+meanStepsPerDay
+medianStepsPerDay <- median(StepsPerDay$steps)
+medianStepsPerDay
+```
 
+Average daily activity pattern and maximum number of the steps per interval
+```{r echo=TRUE}
+StepsPerInterval <- aggregate(steps~interval, ActivityData, mean, na.rm=TRUE)
+plot(steps~interval, data = StepsPerInterval, type="l")
+MaxIntervalSteps <- StepsPerInterval[which.max(StepsPerInterval$steps),]$intervaL
+MaxIntervalSteps
+```
 
+Inputting missing values and creating new dataset without missing values
+```{r echo=TRUE}
+TotalMissingValues <- sum(is.na(ActivityData$steps))
+TotalMissingValues
+MeanStepPerInterval <- function(interval){
+    StepsPerInterval[StepsPerInterval$interval==interval,]$steps
+}
 
-## Imputing missing values
+ActivityDataNoNAs <- ActivityData
+    for(i in 1:nrow(ActivityDataNoNAs)){
+        if(is.na(ActivityDataNoNAs[i,]$steps)){
+            ActivityDataNoNAs[i,]$steps <- MeanStepPerInterval(ActivityDataNoNAs[i,]$interval)
+        }
+    }
 
+StepsPerDayNoNAs <- aggregate(steps~date, data=ActivityDataNoNAs, sum)
+hist(StepsPerDayNoNAs$steps)
+meanStepsPerDayNoNAs <- mean(StepsPerDayNoNAs$steps)
+medianStepsPerDayNoNAs <- median(StepsPerDayNoNAs$steps)
+meanStepsPerDayNoNAs
+medianStepsPerDayNoNAs
+```
 
+Are there any differences in activity patterns weekdays and weekends?
+```{r echo=TRUE}
+ActivityDataNoNAs$date <- as.Date(strptime(ActivityDataNoNAs$date, format = "%Y-%m-%d"))
+ActivityDataNoNAs$day <- weekdays(ActivityDataNoNAs$date)
+for (i in 1:nrow(ActivityDataNoNAs)) {
+    if (ActivityDataNoNAs[i,]$day %in% c("Saturday", "Sunday")) {
+        ActivityDataNoNAs[i,]$day <- "weekend"
+    }
+    else {
+        ActivityDataNoNAs[i,]$day <-"weekday"
+    }
+}
+StepsByDay <- aggregate(ActivityDataNoNAs$steps~ActivityDataNoNAs$interval + ActivityDataNoNAs$day, ActivityDataNoNAs, mean)
 
-## Are there differences in activity patterns between weekdays and weekends?
+#make panel plot
+names(StepsByDay) <- c("interval", "day", "steps")
+library(lattice)
+xyplot(steps~interval | day, StepsByDay, type="l", layout= c(1, 2),
+       xlab= "Interval", ylab= "Number of steps")
+```
